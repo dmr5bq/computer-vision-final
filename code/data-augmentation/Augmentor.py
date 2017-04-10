@@ -2,7 +2,8 @@
 import os
 import numpy as np
 from skimage.io import imread, imsave
-from random import randint
+import skimage
+from random import randint, random
 
 class Augmentor:
 
@@ -55,10 +56,18 @@ class Augmentor:
     def run(self):
 
         if self.input_data is not None:
-            for image in self.input_data:
-                #self.output_data.append(image)
+            for i in range(len(self.input_data)):
+                if i % 50 == 0:
+                    print("{} / {} processed".format(i, len(self.input_data)))
+
+                image = self.input_data[i]
+                self.output_data.append(image)
+
                 self._add_flips(image)
-                self._add_crop_random(image)
+
+                for x in range(10):
+                    self._add_crop_random(image)
+                    self._add_color_random(image)
 
             self._write_data()
 
@@ -66,16 +75,14 @@ class Augmentor:
             raise self.NO_LOAD_EXC
 
     def _add_flips(self, image):
-        # self.output_data.append(np.fliplr(image))
-        #self.output_data.append(np.flipud(image))
+        self.output_data.append(np.fliplr(image))
+        self.output_data.append(np.flipud(image))
         pass
 
     def _add_translate_random(self, image):
         low = -image.shape[0]/5
         high = image.shape[0]/5
         d = randint(low, high)
-
-        pass
 
     def _add_crop_random(self, image):
 
@@ -103,10 +110,26 @@ class Augmentor:
         if area * area_frac < area_r:
             self.output_data.append(img_crop_r)
 
-        pass
-
     def _add_color_random(self, image):
-        pass
+
+        mult = 0.25
+        off_r = random()
+        off_g = random()
+        off_b = random()
+
+        i_copy = skimage.img_as_float(image)
+
+        i_copy[:, :, 0] = np.add(i_copy[:, :, 0], off_r * mult)
+        i_copy[:, :, 1] = np.add(i_copy[:, :, 1], off_g * mult)
+        i_copy[:, :, 2] = np.add(i_copy[:, :, 2], off_b * mult)
+
+        for x in range(i_copy.shape[0]):
+            for y in range(i_copy.shape[1]):
+                for i in range(3):
+                    i_copy[x, y, i] = min(i_copy[x, y, i], 1.)
+                    i_copy[x, y, i] = max(0, i_copy[x, y, i])
+
+        self.output_data.append(skimage.img_as_ubyte(i_copy))
 
     def _write_data(self):
         n = len(self.output_data)
