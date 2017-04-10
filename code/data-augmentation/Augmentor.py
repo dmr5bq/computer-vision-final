@@ -1,6 +1,7 @@
 
 import os
 import numpy as np
+from skimage.io import imread, imsave
 
 
 class Augmentor:
@@ -19,25 +20,31 @@ class Augmentor:
                   "\"rel\" mode or \"abs\" mode")
 
         self.input_data = None
-        self.output_data = None
-        self.complete = False
+        self.output_data = []
 
-    def load(self, path):
-        pass
+    def load(self):
+
+        self.input_data = []
+
+        list_files = [] # TODO
+
+        for f_name in list_files:
+            self.input_data.append(imread(f_name))
 
     def run(self):
 
         if self.input_data is not None:
-            while not self.complete:
-                for image in self.input_data:
-                    pass
+            for image in self.input_data:
+                self.output_data.append(image)
+                pass
 
         else:
             raise Exception("This object did not load any data-- please execute 'load()'"
                             " before attempting to use 'run()' to load proper image data.")
 
-    def _flip_random(self, image):
-        pass
+    def _flips(self, image):
+        self.output_data.append(np.fliplr(image))
+        self.output_data.append(np.flipud(image))
 
     def _translate_random(self, image):
         pass
