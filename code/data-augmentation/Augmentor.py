@@ -2,11 +2,15 @@
 import os
 import numpy as np
 from skimage.io import imread, imsave
-
+from random import randint
 
 class Augmentor:
 
+    NO_LOAD_EXC = Exception("This object did not load any data-- please execute 'load()' or 'load_from()'"
+                            " before attempting to use 'run()' to load proper image data.")
+
     def __init__(self, datapath='', mode='default'):
+
         if mode == 'abs':
             self.datapath = datapath
         elif mode == 'rel':
@@ -24,39 +28,95 @@ class Augmentor:
 
     def load(self):
 
+        src_dir = self.datapath
+
         self.input_data = []
 
-        list_files = [] # TODO
+        list_files = [f for f in os.listdir(src_dir) if os.path.isfile(os.path.join(src_dir, f))]
 
         for f_name in list_files:
-            self.input_data.append(imread(f_name))
+            img = imread(os.path.join(src_dir, f_name))
+            self.input_data.append(img)
+
+    def load_from(self, path):
+
+        src_dir = os.path.join(self.datapath, path)
+
+        self.datapath = src_dir
+
+        self.input_data = []
+
+        list_files = [f for f in os.listdir(src_dir) if os.path.isfile(os.path.join(src_dir, f))]
+
+        for f_name in list_files:
+            img = imread(os.path.join(src_dir, f_name))
+            self.input_data.append(img)
 
     def run(self):
 
         if self.input_data is not None:
             for image in self.input_data:
-                self.output_data.append(image)
-                pass
+                #self.output_data.append(image)
+                self._add_flips(image)
+                self._add_crop_random(image)
+
+            self._write_data()
 
         else:
-            raise Exception("This object did not load any data-- please execute 'load()'"
-                            " before attempting to use 'run()' to load proper image data.")
+            raise self.NO_LOAD_EXC
 
-    def _flips(self, image):
-        self.output_data.append(np.fliplr(image))
-        self.output_data.append(np.flipud(image))
-
-    def _translate_random(self, image):
+    def _add_flips(self, image):
+        # self.output_data.append(np.fliplr(image))
+        #self.output_data.append(np.flipud(image))
         pass
 
-    def _crop_random(self, image):
+    def _add_translate_random(self, image):
+        low = -image.shape[0]/5
+        high = image.shape[0]/5
+        d = randint(low, high)
+
         pass
 
-    def _color_random(self, image):
+    def _add_crop_random(self, image):
+
+        w = image.shape[0]
+        h = image.shape[1]
+
+        x, y = randint(w / 4, 3 * w / 4), randint(h / 4, 3 * h / 4)
+
+        w_x = randint(w/5, w/4 - 1)
+        w_y = randint(h/5, h/4 - 1)
+
+        img_crop_l = image[0: x + w_x, y + w_y]
+        img_crop_r = image[x - w_x: w, y - w_y: h]
+
+        area = w * h
+
+        area_frac = 0.55 # this seems to be a good threshold for now
+
+        area_l = img_crop_l.shape[0] * img_crop_l.shape[1]
+        area_r = img_crop_r.shape[0] * img_crop_r.shape[1]
+
+        if area * area_frac < area_l:
+            self.output_data.append(img_crop_l)
+
+        if area * area_frac < area_r:
+            self.output_data.append(img_crop_r)
+
+        pass
+
+    def _add_color_random(self, image):
         pass
 
     def _write_data(self):
-        pass
+        n = len(self.output_data)
+        for i in range(n):
+            if i % 50 == 0:
+                print("{} / {} saved".format(i, n))
+            imsave(os.path.join(self.datapath, 'output/{}.png'.format(i)), self.output_data[i])
 
 
-
+if __name__ == '__main__':
+    a = Augmentor()
+    a.load_from('person4/seq3')
+    a.run()
