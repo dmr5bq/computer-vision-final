@@ -4,6 +4,7 @@ import numpy as np
 from skimage.io import imread, imsave
 import skimage
 from random import randint, random
+from time import time
 
 class Augmentor:
 
@@ -54,7 +55,20 @@ class Augmentor:
             self.input_data.append(img)
 
     def run(self):
+        start_t = time()
 
+        self._process()
+        print ("{} elapsed -- pass 1 completed".format(time() - start_t))
+
+        self.input_data = self.output_data[:]
+        self._process()
+        print ("{} elapsed -- pass 2 completed".format(time() - start_t))
+
+        self._write_data()
+        print ("{} elapsed -- write completed".format(time() - start_t))
+
+
+    def _process(self):
         if self.input_data is not None:
             for i in range(len(self.input_data)):
                 if i % 50 == 0:
@@ -63,21 +77,22 @@ class Augmentor:
                 image = self.input_data[i]
                 self.output_data.append(image)
 
-                self._add_flips(image)
+                decision = random()
+                thres = 0.3
 
-                for x in range(10):
-                    self._add_crop_random(image)
-                    self._add_color_random(image)
+                if decision <= thres:
 
-            self._write_data()
+                    self._add_flips(image)
 
+                    for x in range(10):
+                        self._add_crop_random(image)
+                        self._add_color_random(image)
         else:
             raise self.NO_LOAD_EXC
 
     def _add_flips(self, image):
         self.output_data.append(np.fliplr(image))
         self.output_data.append(np.flipud(image))
-        pass
 
     def _add_translate_random(self, image):
         low = -image.shape[0]/5
