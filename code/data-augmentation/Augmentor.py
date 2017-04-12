@@ -12,11 +12,12 @@ class Augmentor:
                             " before attempting to use 'run()' to load proper image data.")
 
     def __init__(self, datapath='', mode='default'):
-
         if mode == 'abs':
             self.datapath = datapath
+
         elif mode == 'rel':
             self.datapath = os.path.abspath(os.path.join(os.path.dirname(__file__), datapath))
+
         elif mode == 'default':
             one_up = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 
@@ -29,7 +30,6 @@ class Augmentor:
         self.output_data = []
 
     def load(self):
-
         src_dir = self.datapath
 
         self.input_data = []
@@ -41,7 +41,6 @@ class Augmentor:
             self.input_data.append(img)
 
     def load_from(self, path):
-
         src_dir = os.path.join(self.datapath, path)
 
         self.datapath = src_dir
@@ -67,8 +66,9 @@ class Augmentor:
         self._write_data()
         print ("{} elapsed -- write completed".format(time() - start_t))
 
-
     def _process(self):
+        thres = 0.3
+
         if self.input_data is not None:
             for i in range(len(self.input_data)):
                 if i % 50 == 0:
@@ -77,15 +77,13 @@ class Augmentor:
                 image = self.input_data[i]
                 self.output_data.append(image)
 
-                decision = random()
-                thres = 0.3
-
-                if decision <= thres:
-
+                if random() < thres:
                     self._add_flips(image)
 
-                    for x in range(10):
+                for x in range(10):
+                    if random() < thres:
                         self._add_crop_random(image)
+                    if random() < thres:
                         self._add_color_random(image)
         else:
             raise self.NO_LOAD_EXC
@@ -93,11 +91,6 @@ class Augmentor:
     def _add_flips(self, image):
         self.output_data.append(np.fliplr(image))
         self.output_data.append(np.flipud(image))
-
-    def _add_translate_random(self, image):
-        low = -image.shape[0]/5
-        high = image.shape[0]/5
-        d = randint(low, high)
 
     def _add_crop_random(self, image):
 
