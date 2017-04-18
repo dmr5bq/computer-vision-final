@@ -5,11 +5,12 @@ from skimage.io import imread, imsave
 import skimage
 from random import randint, random
 from time import time
+from gc import *
 
 class Augmentor:
 
-    NO_LOAD_EXC = Exception("This object did not load any data-- please execute 'load()' or 'load_from()'"
-                            " before attempting to use 'run()' to load proper image data.")
+    NO_LOAD_EXC = RuntimeError("This object did not load any data-- please execute 'load()' or 'load_from()'"
+                               " before attempting to use 'run()' to load proper image data.")
 
     def __init__(self, datapath='', mode='default'):
         if mode == 'abs':
@@ -19,15 +20,15 @@ class Augmentor:
             self.datapath = os.path.abspath(os.path.join(os.path.dirname(__file__), datapath))
 
         elif mode == 'default':
-            one_up = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 
-            self.datapath = os.path.abspath(os.path.join(one_up, os.pardir, 'data'))
+            self.datapath = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, 'data'))
 
             print("You are now pointed at the project's data root. If this isn't what you intended, use "
                   "\"rel\" mode or \"abs\" mode")
 
         self.input_data = None
         self.output_data = []
+        self.outpath = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, 'data/augmented-data'))
 
     def load(self):
         src_dir = self.datapath
@@ -66,8 +67,11 @@ class Augmentor:
         self._write_data()
         print ("{} elapsed -- write completed".format(time() - start_t))
 
+        self._clean()
+
     def _process(self):
-        thres = 0.3
+        collect()
+        thres = 0.5
 
         if self.input_data is not None:
             for i in range(len(self.input_data)):
@@ -77,8 +81,8 @@ class Augmentor:
                 image = self.input_data[i]
                 self.output_data.append(image)
 
-                if random() < thres:
-                    self._add_flips(image)
+
+                self._add_flips(image)
 
                 for x in range(10):
                     if random() < thres:
@@ -97,30 +101,43 @@ class Augmentor:
         w = image.shape[0]
         h = image.shape[1]
 
-        x, y = randint(w / 4, 3 * w / 4), randint(h / 4, 3 * h / 4)
+        area = w * h
+
+        area_frac = 0.8  # this seems to be a good threshold for now
+
+        x_rg = w / 4, 3 * w / 4
+        y_rg = h / 4, 3 * h / 4
+
+        x, y = randint(x_rg), randint(y_rg)
 
         w_x = randint(w/5, w/4 - 1)
         w_y = randint(h/5, h/4 - 1)
 
-        img_crop_l = image[0: x + w_x, y + w_y]
-        img_crop_r = image[x - w_x: w, y - w_y: h]
+        img_crop_1 = image[0: x + w_x, 0: y + w_y]
+        img_crop_2 = image[x - w_x: w, y - w_y: h]
+        img_crop_3 = image[0: x + w_x, y - w_y: h]
+        img_crop_4 = image[x - w_x: w, 0: y + w_y]
 
-        area = w * h
+        area_1 = img_crop_1.shape[0] * img_crop_1.shape[1]
+        area_2 = img_crop_2.shape[0] * img_crop_2.shape[1]
+        area_3 = img_crop_1.shape[0] * img_crop_1.shape[1]
+        area_4 = img_crop_2.shape[0] * img_crop_2.shape[1]
 
-        area_frac = 0.55 # this seems to be a good threshold for now
+        if area * area_frac < area_1:
+            self.output_data.append(img_crop_1)
 
-        area_l = img_crop_l.shape[0] * img_crop_l.shape[1]
-        area_r = img_crop_r.shape[0] * img_crop_r.shape[1]
+        if area * area_frac < area_2:
+            self.output_data.append(img_crop_2)
 
-        if area * area_frac < area_l:
-            self.output_data.append(img_crop_l)
+        if area * area_frac < area_3:
+            self.output_data.append(img_crop_3)
 
-        if area * area_frac < area_r:
-            self.output_data.append(img_crop_r)
+        if area * area_frac < area_4:
+            self.output_data.append(img_crop_4)
 
     def _add_color_random(self, image):
 
-        mult = 0.25
+        mult = 0.15
         off_r = random()
         off_g = random()
         off_b = random()
@@ -139,12 +156,17 @@ class Augmentor:
 
         self.output_data.append(skimage.img_as_ubyte(i_copy))
 
+    def _clean(self):
+        self.input_data = []
+        self.output_data = []
+        self.datapath = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, 'data'))
+
     def _write_data(self):
         n = len(self.output_data)
         for i in range(n):
             if i % 50 == 0:
                 print("{} / {} saved".format(i, n))
-            imsave(os.path.join(self.datapath, 'output/{}.png'.format(i)), self.output_data[i])
+            imsave(os.path.join(self.outpath, '{}.png'.format(i)), self.output_data[i])
 
 
 if __name__ == '__main__':
