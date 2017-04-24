@@ -6,9 +6,10 @@ import skimage
 from random import randint, random
 from time import time
 from gc import *
+from math import ceil
 
 
-class Augmentor:
+class AugmentorOptimized:
 
     NO_LOAD_EXC = RuntimeError("This object did not load any data-- please execute 'load()' or 'load_from()'"
                                " before attempting to use 'run()' to load proper image data.")
@@ -27,8 +28,9 @@ class Augmentor:
             print("You are now pointed at the project's data root. If this isn't what you intended, use "
                   "\"rel\" mode or \"abs\" mode")
 
+        self.accumulator = []
         self.input_data = None
-        self.output_data = []
+        self.start_time = 0
 
     def load(self):
         src_dir = self.datapath
@@ -37,66 +39,54 @@ class Augmentor:
 
         list_files = [f for f in os.listdir(src_dir) if os.path.isfile(os.path.join(src_dir, f))]
 
-        for f_name in list_files:
-            img = imread(os.path.join(src_dir, f_name))
-            self.input_data.append(img)
+        self.input_data = list_files[:]
 
     def load_from(self, path):
         src_dir = os.path.join(self.datapath, path)
 
         self.datapath = src_dir
 
-        self.input_data = []
-
         list_files = [f for f in os.listdir(src_dir) if os.path.isfile(os.path.join(src_dir, f))]
 
-        #for f_name in list_files:
-        for i in range(10):
-            f_name = list_files[i]
-            img = imread(os.path.join(src_dir, f_name))
-            self.input_data.append(img)
+        self.input_data = list_files[:]
 
     def run(self):
-        start_t = time()
+        self.start_time = time()
 
         self._process()
-        print ("{} elapsed -- pass 1 completed".format(time() - start_t))
+        print ("{} elapsed -- pass 1 completed".format(time() - self.start_time))
 
-        self.input_data = self.output_data[:]
-        self._process()
-        print ("{} elapsed -- pass 2 completed".format(time() - start_t))
-
-        self._write_data()
-        print ("{} elapsed -- write completed".format(time() - start_t))
 
         self._clean()
 
     def _process(self):
-        collect()
-        thres = 0.5
+        thres = 0.25
+        batch_size = 10
 
         if self.input_data is not None:
-            for i in range(len(self.input_data)):
-                if i % 50 == 0:
-                    print("{} / {} processed".format(i, len(self.input_data)))
+            for batch in range(int(ceil(float(len(self.input_data)) / float(batch_size)))):
+                print("\n---\nBatch no: {} Pos: {} / {}"
+                      "\n\nTime elapsed: {} s".format(batch, batch_size*batch, len(self.input_data), int(time() - self.start_time)))
+                self._load_batch(batch * batch_size, batch_size)
 
-                image = self.input_data[i]
-                self.output_data.append(image)
+                original_imgs = self.accumulator[:]
+                for image in original_imgs:
 
+                    self._add_flips(image)
 
-                self._add_flips(image)
+                    for x in range(10):
+                        if random() < thres:
+                            self._add_crop_random(image)
+                        if random() < thres:
+                            self._add_color_random(image)
 
-                for x in range(10):
-                    if random() < thres:
-                        self._add_crop_random(image)
-                    if random() < thres:
-                        self._add_color_random(image)
+                self._write_data(batch*batch_size)
         else:
             raise self.NO_LOAD_EXC
 
     def _add_flips(self, image):
-        self.output_data.append(np.fliplr(image))
-        self.output_data.append(np.flipud(image))
+        self.accumulator.append(np.fliplr(image))
+        self.accumulator.append(np.flipud(image))
 
     def _add_crop_random(self, image):
 
@@ -126,19 +116,18 @@ class Augmentor:
         area_4 = img_crop_2.shape[0] * img_crop_2.shape[1]
 
         if area * area_frac < area_1:
-            self.output_data.append(img_crop_1)
+            self.accumulator.append(img_crop_1)
 
         if area * area_frac < area_2:
-            self.output_data.append(img_crop_2)
+            self.accumulator.append(img_crop_2)
 
         if area * area_frac < area_3:
-            self.output_data.append(img_crop_3)
+            self.accumulator.append(img_crop_3)
 
         if area * area_frac < area_4:
-            self.output_data.append(img_crop_4)
+            self.accumulator.append(img_crop_4)
 
     def _add_color_random(self, image):
-
         mult = 0.3
         off_r = random()
         off_g = random()
@@ -156,24 +145,29 @@ class Augmentor:
                     i_copy[x, y, i] = min(i_copy[x, y, i], 1.)
                     i_copy[x, y, i] = max(0, i_copy[x, y, i])
 
-        self.output_data.append(skimage.img_as_ubyte(i_copy))
+        self.accumulator.append(skimage.img_as_ubyte(i_copy))
 
     def _clean(self):
         self.input_data = []
-        self.output_data = []
         self.datapath = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, 'data'))
 
-    def _write_data(self):
-        n = len(self.output_data)
+    def _write_data(self, start_position):
+        n = len(self.accumulator)
+        print("\tWriting...\n\t\tBatch number: {}\n\t\tTotal images: {}".format(start_position/n, n))
         if not os.path.exists(self.datapath + '/output'):
             os.makedirs(self.datapath + '/output')
         for i in range(n):
-            if i % 50 == 0:
-                print("{} / {} saved".format(i, n))
-            imsave(os.path.join(self.datapath, 'output/{}.png'.format(i)), self.output_data[i])
+            imsave(os.path.join(self.datapath, 'output/{}.png'.format(start_position + i)), self.accumulator[i])
 
+    def _load_batch(self, start_position, batch_size):
+        del self.accumulator[:]
+        collect()
+        for i in range(batch_size):
+            if start_position + i < len(self.input_data):
+                fname = self.input_data[start_position + i]
+                self.accumulator.append(imread(os.path.join(self.datapath, fname)))
 
 if __name__ == '__main__':
-    a = Augmentor()
-    a.load_from('person4/seq3')
+    a = AugmentorOptimized()
+    a.load_from('person1/seq3')
     a.run()
