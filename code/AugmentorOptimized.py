@@ -8,6 +8,7 @@ from time import time
 from gc import *
 from math import ceil
 
+__author__ = "Dominic Ritchey"
 
 class AugmentorOptimized:
 
@@ -70,7 +71,9 @@ class AugmentorOptimized:
                 self._load_batch(batch * batch_size, batch_size)
 
                 original_imgs = self.accumulator[:]
+                print("\tProcessing...")
                 for image in original_imgs:
+
 
                     self._add_flips(image)
 
@@ -151,15 +154,16 @@ class AugmentorOptimized:
         self.input_data = []
         self.datapath = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, 'data'))
 
-    def _write_data(self, start_position):
+    def _write_data(self):
         n = len(self.accumulator)
-        print("\tWriting...\n\t\tBatch number: {}\n\t\tTotal images: {}".format(start_position/n, n))
+        print("\tWriting...\n\t\tTotal images: {}".format(n))
         if not os.path.exists(self.datapath + '/output'):
             os.makedirs(self.datapath + '/output')
         for i in range(n):
-            imsave(os.path.join(self.datapath, 'output/{}.png'.format(start_position + i)), self.accumulator[i])
+            imsave(os.path.join(self.datapath, 'output/{}.png'.format(time())), self.accumulator[i])
 
     def _load_batch(self, start_position, batch_size):
+        print("\tLoading...")
         del self.accumulator[:]
         collect()
         for i in range(batch_size):
@@ -170,4 +174,6 @@ class AugmentorOptimized:
 if __name__ == '__main__':
     a = AugmentorOptimized()
     a.load_from('person1/seq3')
+    a.run()
+    a.load_from('person1/seq3/output')
     a.run()
