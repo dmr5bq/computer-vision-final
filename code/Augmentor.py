@@ -7,6 +7,7 @@ from random import randint, random
 from time import time
 from gc import *
 
+__author__ = "Dominic Ritchey"
 
 class Augmentor:
 
