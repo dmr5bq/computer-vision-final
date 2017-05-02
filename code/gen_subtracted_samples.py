@@ -16,21 +16,25 @@ from skimage import io, filters
 plt.rcParams['image.cmap'] = 'gray'
 
 bg_path = '../data/person1/seq1/000053.jpg' #sys.argv[1] #this is the background image with no human
-input_directory = '../data/person1/seq3/' #sys.argv[2]
-output_directory = '../data/subtracted/falling/' #sys.argv[3]
+input_directory = '../data/person1/seq1/' #sys.argv[2]
+output_directory = '../data/subtracted-thresh/standing/' #sys.argv[3]
 
 # Process BG image
 background = grayscale(bg_path) 
 b_sobel = filters.sobel(background)
 
 
-start_int = 196
-num_samples = 10
+start_int = 165
+num_samples = 50
 for i in range(num_samples):
 	fallen = grayscale(input_directory + '000' + str(start_int+i) + '.jpg') 
 	f_sobel = filters.sobel(fallen)
 
 	sub = cv2.subtract(b_sobel, f_sobel)
+
+	thresh = filters.threshold_otsu(sub) * 1.2
+	print(thresh)
+	sub = sub > thresh
 
 	#TODO: output the image without white margins!!
 	plt.imshow(sub)

@@ -23,13 +23,13 @@ __author__ = "Divya Bhaskara"
 #batch_size = 128
 epochs = 5
 num_classes = 3
-classes = ['falling', 'sitting']
+classes = ['falling', 'sitting', 'standing']
 
 # Input image dimensions
 img_rows, img_cols = 485, 657
 
 # Extract the data
-x_train_path = "../data/subtracted/"
+x_train_path = "../data/subtracted-thresh/"
 x_train = []
 y_train = []
 
@@ -54,7 +54,6 @@ else:
     x_train = x_train.reshape(x_train.shape[0], img_rows, img_cols, 1)
     input_shape = (img_rows, img_cols, 1)
 
-
 # Plotting images: sanity check for reshaping
 # for m in range(x_train.shape[0]):
 # 	img = x_train[m, :, :, 0]
@@ -74,31 +73,32 @@ y_train = keras.utils.to_categorical(y_train, num_classes)
 model = Sequential()
 
 # ----- Based off of convnet architecture that worked for MNIST handwritten samples -----
-# model.add(Conv2D(32, kernel_size=(3, 3), activation='relu',input_shape=input_shape))
-# model.add(MaxPooling2D(pool_size=(2, 2)))
+model.add(Conv2D(32, kernel_size=(3, 3), activation='tanh',input_shape=input_shape))
+model.add(MaxPooling2D(pool_size=(2, 2)))
+model.add(Conv2D(32, kernel_size=(3, 3), activation='tanh'))
+model.add(MaxPooling2D(pool_size=(2, 2)))
 # model.add(Conv2D(32, kernel_size=(3, 3), activation='relu'))
 # model.add(MaxPooling2D(pool_size=(2, 2)))
-# model.add(Conv2D(32, kernel_size=(3, 3), activation='relu'))
-# model.add(MaxPooling2D(pool_size=(2, 2)))
-# model.add(Flatten())
-# model.add(Dense(num_classes, activation='softmax'))
+# model.add(Dropout(0.25))
+model.add(Flatten())
+model.add(Dense(num_classes, activation='softmax'))
 
 
 # ----- Based off of simple deep net for CIFAR small images dataset ------
-model.add(Conv2D(32, (3, 3), activation='relu', padding='same', input_shape=input_shape))
-model.add(Conv2D(32, (3, 3), activation='relu'))
-model.add(MaxPooling2D(pool_size=(2, 2)))
-model.add(Dropout(0.25))
+# model.add(Conv2D(32, (3, 3), activation='relu', padding='same', input_shape=input_shape))
+# model.add(Conv2D(32, (3, 3), activation='relu'))
+# model.add(MaxPooling2D(pool_size=(2, 2)))
+# model.add(Dropout(0.25))
 
-model.add(Conv2D(64, (3, 3), padding='same', activation='relu'))
-model.add(Conv2D(64, (3, 3), activation='relu'))
-model.add(MaxPooling2D(pool_size=(2, 2)))
-model.add(Dropout(0.25))
+# model.add(Conv2D(64, (3, 3), padding='same', activation='relu'))
+# model.add(Conv2D(64, (3, 3), activation='relu'))
+# model.add(MaxPooling2D(pool_size=(2, 2)))
+# model.add(Dropout(0.25))
 
-model.add(Flatten())
-model.add(Dense(512, activation='relu'))
-model.add(Dropout(0.5))
-model.add(Dense(num_classes, activation='softmax'))
+# model.add(Flatten())
+# model.add(Dense(512, activation='relu'))
+# model.add(Dropout(0.5))
+# model.add(Dense(num_classes, activation='softmax'))
 
 # Train the weights of the network
 model.compile(loss=keras.losses.categorical_crossentropy,
@@ -112,6 +112,11 @@ model.fit(x_train, y_train,
           #epochs=epochs,
           verbose=1,
           )
+
 # this just outputs the training accuracy for now
 end = time.time()
 print('Training time:', end-start)
+
+
+model.save('model')
+
