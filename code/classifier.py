@@ -52,7 +52,7 @@ plt.rcParams['image.cmap'] = 'gray'
 epochs = 1
 num_classes = 3
 classes = ['falling', 'sitting', 'standing']
-model = load_model('amir-model') #model-best
+model = load_model('model') #model-best
 
 
 bg_path = '../data/person1/seq1/000053.jpg' #sys.argv[1] #this is the background image with no human
@@ -81,8 +81,8 @@ for i in range(num_samples):
 
 
 # Input image dimensions
-# img_rows, img_cols = 485, 657
-img_rows, img_cols = 391, 535
+img_rows, img_cols = 485, 657
+# img_rows, img_cols = 391, 535
 
 
 # Extract the data
@@ -127,10 +127,14 @@ y_test = keras.utils.to_categorical(y_test, num_classes)
 
 score = model.evaluate(x_test, y_test, verbose=0)
 
-prediction = model.predict(x_test)
+# print(score)
+print('Test loss:', score[0])
+print('Test accuracy:', score[1]*100)
 
-result, n_result = find_confusion_matrix(y_test, prediction)
+# prediction = model.predict(x_test)
 
-pprint.pprint(result)
-print('---')
-pprint.pprint(n_result)
+# result, n_result = find_confusion_matrix(y_test, prediction)
+
+# pprint.pprint(result)
+# print('---')
+# pprint.pprint(n_result)
