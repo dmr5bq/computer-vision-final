@@ -57,7 +57,6 @@ class AugmentorOptimized:
         self._process()
         print ("{} elapsed -- pass 1 completed".format(time() - self.start_time))
 
-
         self._clean()
 
     def _process(self):
@@ -83,7 +82,7 @@ class AugmentorOptimized:
                         if random() < thres:
                             self._add_color_random(image)
 
-                self._write_data(batch*batch_size)
+                self._write_data()
         else:
             raise self.NO_LOAD_EXC
 
@@ -173,7 +172,6 @@ class AugmentorOptimized:
 
 if __name__ == '__main__':
     a = AugmentorOptimized()
-    a.load_from('person1/seq3')
+    a.load_from('test')
     a.run()
-    a.load_from('person1/seq3/output')
-    a.run()
+
