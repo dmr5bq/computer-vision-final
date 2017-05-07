@@ -14,125 +14,113 @@ from keras.datasets import mnist
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Flatten
 from keras.layers import Conv2D, MaxPooling2D
+from keras.preprocessing.image import ImageDataGenerator
 from keras import backend as K
+from keras import optimizers
+import h5py
 
 __author__ = "Divya Bhaskara"
 
-
 # Training parameters
 #batch_size = 128
-epochs = 12
+epochs = 10
 num_classes = 3
 classes = ['falling', 'sitting', 'standing']
 
 # Input image dimensions
-img_rows, img_cols = 388, 284
+img_rows, img_cols = 266, 400
 
 # Extract the data
-x_train_path = "../data/augment-subtract/"
-x_train = []
-y_train = []
+train_path = "Training/"
+validation_path = "Validation/"
+validation_samples = 107
+batch_size = 16
+total_samples = 528
 
-train_data_dir = '../data/augment-subtract'      # Path to training images
-validation_data_dir = 'cats_and_dogs_medium/test'  # Validation and test set are the same here
+def grayscale(img):
 
-for i in range(len(classes)):
-	mypath = x_train_path + classes[i]
-	for f in listdir(mypath):
-		filepath = join(mypath, f)
-		if isfile(filepath) and (filepath[-3:] == 'png' or filepath[-3:] == 'jpg'):
-			img = skimage.io.imread(filepath)
-			img = skimage.img_as_float(img)
-			img = skimage.color.rgb2gray(img)
+	rows = img.shape[0]
+	cols = img.shape[1]
 
-			x_train.append(img)
-			y_train.append(i)
+	print(img.shape)
+	averaged = np.zeros((rows, cols))
+	for r in range(rows):
+		for c in range(cols):
+			luminance = .21 * img[r][c][0] + .72 * img[r][c][1] + .07 * img[r][c][2]
+			averaged[r][c] = luminance
 
-x_train = np.stack(x_train, axis=0)
+	return averaged
 
-if K.image_data_format() == 'channels_first':
-    x_train = x_train.reshape(x_train.shape[0], 1, img_rows, img_cols)
-    input_shape = (1, img_rows, img_cols)
-else:
-    x_train = x_train.reshape(x_train.shape[0], img_rows, img_cols, 1)
-    input_shape = (img_rows, img_cols, 1)
+if __name__ == "__main__":
 
-# Plotting images: sanity check for reshaping
-# for m in range(x_train.shape[0]):
-# 	img = x_train[m, :, :, 0]
-# 	print(img.shape)
-# 	plt.imshow(img)
-# 	plt.show()
+	model = Sequential()
 
-x_train = x_train.astype('float32')
-x_train /= 255
+	if K.image_data_format() == 'channels_first':
+		input_shape = (3, img_rows, img_cols)
+	else:
+		input_shape = (img_rows, img_cols, 3)
 
-print('x_train shape:', x_train.shape)
-print(x_train.shape[0], 'train samples')
-y_train = keras.utils.to_categorical(y_train, num_classes)
+	# ----- Based off of simple deep net for CIFAR small images dataset ------
+	model.add(Conv2D(32, (3, 3), activation='relu', padding='same', input_shape=input_shape))
+	model.add(Conv2D(32, (3, 3), activation='relu'))
+	model.add(MaxPooling2D(pool_size=(2, 2)))
+	model.add(Dropout(0.25))
 
+	model.add(Conv2D(64, (3, 3), padding='same', activation='relu'))
+	model.add(Conv2D(64, (3, 3), activation='relu'))
+	model.add(MaxPooling2D(pool_size=(2, 2)))
+	model.add(Dropout(0.25))
 
-# Building the neural network 
-model = Sequential()
+	model.add(Conv2D(128, (3, 3), padding='same', activation='relu'))
+	model.add(Conv2D(128, (3, 3), activation='relu'))
+	model.add(MaxPooling2D(pool_size=(2, 2)))
+	model.add(Dropout(0.25))
 
-# ----- Based off of convnet architecture that worked for MNIST handwritten samples -----
-model.add(Conv2D(32, kernel_size=(3, 3), activation='relu',input_shape=input_shape))
-model.add(MaxPooling2D(pool_size=(2, 2)))
-# model.add(Conv2D(32, kernel_size=(3, 3), activation='tanh'))
-# model.add(MaxPooling2D(pool_size=(2, 2)))
-# model.add(Conv2D(32, kernel_size=(3, 3), activation='tanh'))
-# model.add(MaxPooling2D(pool_size=(2, 2)))
-# model.add(Dropout(0.25))
-model.add(Flatten())
-model.add(Dense(num_classes, activation='sigmoid'))
+	model.add(Conv2D(256, (3, 3), padding='same', activation='relu'))
+	model.add(Conv2D(256, (3, 3), activation='relu'))
+	model.add(MaxPooling2D(pool_size=(2, 2)))
+	model.add(Dropout(0.25))
 
+	model.add(Flatten())
+	model.add(Dense(512, activation='relu'))
+	model.add(Dropout(0.5))
+	model.add(Dense(num_classes, activation='softmax'))
 
-# ----- Based off of simple deep net for CIFAR small images dataset ------
-# model.add(Conv2D(32, (3, 3), activation='relu', padding='same', input_shape=input_shape))
-# model.add(Conv2D(32, (3, 3), activation='relu'))
-# model.add(MaxPooling2D(pool_size=(2, 2)))
-# model.add(Dropout(0.25))
+	model.compile(loss='sparse_categorical_crossentropy',
+		optimizer=optimizers.SGD(lr=1e-3, momentum=0.9),
+		metrics=['accuracy'])
 
-# model.add(Conv2D(64, (3, 3), padding='same', activation='relu'))
-# model.add(Conv2D(64, (3, 3), activation='relu'))
-# model.add(MaxPooling2D(pool_size=(2, 2)))
-# model.add(Dropout(0.25))
+	# Set up data 
+	train_datagen = ImageDataGenerator(rescale=1. / 255)
+	validation_datagen = ImageDataGenerator(rescale=1. / 255)
 
-# model.add(Flatten())
-# model.add(Dense(512, activation='relu'))
-# model.add(Dropout(0.5))
-# model.add(Dense(num_classes, activation='softmax'))
+	train_generator = train_datagen.flow_from_directory(
+		train_path,
+		target_size=(img_rows, img_cols),
+		batch_size=batch_size,
+		class_mode='binary')
 
-train_generator = train_datagen.flow_from_directory(
-    train_data_dir,
-    target_size=(img_height, img_width),
-    batch_size=batch_size,
-    class_mode='binary')
+	validation_generator = validation_datagen.flow_from_directory(
+		validation_path,
+		target_size=(img_rows, img_cols),
+		batch_size=batch_size,
+		class_mode='binary')
 
-validation_generator = test_datagen.flow_from_directory(
-    validation_data_dir,
-    target_size=(img_height, img_width),
-    batch_size=batch_size,
-    class_mode='binary')
+	start = time.time()
 
-# Train the weights of the network
-model.compile(loss=keras.losses.categorical_crossentropy,
-              optimizer=optimizers.SGD(lr=1e-3, momentum=0.9),
-              metrics=['accuracy'])
+	model.fit_generator(
+		train_generator,
+		epochs=epochs,
+		steps_per_epoch = total_samples//batch_size,
+		validation_data=validation_generator,
+		validation_steps=validation_samples)
 
+	# Find training time
+	end = time.time()
+	print('Training time:', end-start)
+	start = time.time()
 
-start = time.time()
-model.fit_generator(
-    train_generator,
-    steps_per_epoch=nb_train_samples//batch_size,
-    epochs=epochs,
-    validation_data=validation_generator,
-    validation_steps=nb_validation_samples)
-
-# this just outputs the training accuracy for now
-end = time.time()
-print('Training time:', end-start)
-
-
-model.save('model')
-
+	# Save the model
+	model.save('GlennaFalling.hd5')
+	end = time.time()
+	print('Saving time: ', end-start)
