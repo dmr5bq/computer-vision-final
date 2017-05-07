@@ -21,23 +21,26 @@ __author__ = "Divya Bhaskara"
 
 # Training parameters
 #batch_size = 128
-epochs = 5
+epochs = 12
 num_classes = 3
 classes = ['falling', 'sitting', 'standing']
 
 # Input image dimensions
-img_rows, img_cols = 485, 657
+img_rows, img_cols = 388, 284
 
 # Extract the data
-x_train_path = "../data/subtracted-thresh/"
+x_train_path = "../data/augment-subtract/"
 x_train = []
 y_train = []
+
+train_data_dir = '../data/augment-subtract'      # Path to training images
+validation_data_dir = 'cats_and_dogs_medium/test'  # Validation and test set are the same here
 
 for i in range(len(classes)):
 	mypath = x_train_path + classes[i]
 	for f in listdir(mypath):
 		filepath = join(mypath, f)
-		if isfile(filepath) and filepath[-3:] == 'png':
+		if isfile(filepath) and (filepath[-3:] == 'png' or filepath[-3:] == 'jpg'):
 			img = skimage.io.imread(filepath)
 			img = skimage.img_as_float(img)
 			img = skimage.color.rgb2gray(img)
@@ -73,15 +76,15 @@ y_train = keras.utils.to_categorical(y_train, num_classes)
 model = Sequential()
 
 # ----- Based off of convnet architecture that worked for MNIST handwritten samples -----
-model.add(Conv2D(32, kernel_size=(3, 3), activation='tanh',input_shape=input_shape))
+model.add(Conv2D(32, kernel_size=(3, 3), activation='relu',input_shape=input_shape))
 model.add(MaxPooling2D(pool_size=(2, 2)))
-model.add(Conv2D(32, kernel_size=(3, 3), activation='tanh'))
-model.add(MaxPooling2D(pool_size=(2, 2)))
-# model.add(Conv2D(32, kernel_size=(3, 3), activation='relu'))
+# model.add(Conv2D(32, kernel_size=(3, 3), activation='tanh'))
+# model.add(MaxPooling2D(pool_size=(2, 2)))
+# model.add(Conv2D(32, kernel_size=(3, 3), activation='tanh'))
 # model.add(MaxPooling2D(pool_size=(2, 2)))
 # model.add(Dropout(0.25))
 model.add(Flatten())
-model.add(Dense(num_classes, activation='softmax'))
+model.add(Dense(num_classes, activation='sigmoid'))
 
 
 # ----- Based off of simple deep net for CIFAR small images dataset ------
@@ -100,18 +103,31 @@ model.add(Dense(num_classes, activation='softmax'))
 # model.add(Dropout(0.5))
 # model.add(Dense(num_classes, activation='softmax'))
 
+train_generator = train_datagen.flow_from_directory(
+    train_data_dir,
+    target_size=(img_height, img_width),
+    batch_size=batch_size,
+    class_mode='binary')
+
+validation_generator = test_datagen.flow_from_directory(
+    validation_data_dir,
+    target_size=(img_height, img_width),
+    batch_size=batch_size,
+    class_mode='binary')
+
 # Train the weights of the network
 model.compile(loss=keras.losses.categorical_crossentropy,
-              optimizer=keras.optimizers.Adadelta(),
+              optimizer=optimizers.SGD(lr=1e-3, momentum=0.9),
               metrics=['accuracy'])
 
 
 start = time.time()
-model.fit(x_train, y_train,
-          #batch_size=batch_size,
-          #epochs=epochs,
-          verbose=1,
-          )
+model.fit_generator(
+    train_generator,
+    steps_per_epoch=nb_train_samples//batch_size,
+    epochs=epochs,
+    validation_data=validation_generator,
+    validation_steps=nb_validation_samples)
 
 # this just outputs the training accuracy for now
 end = time.time()
