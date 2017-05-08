@@ -72,15 +72,12 @@ class AugmentorOptimized:
                 original_imgs = self.accumulator[:]
                 print("\tProcessing...")
                 for image in original_imgs:
-
-
+                    
                     self._add_flips(image)
 
                     for x in range(10):
                         if random() < thres:
                             self._add_crop_random(image)
-                        if random() < thres:
-                            self._add_color_random(image)
 
                 self._write_data()
         else:
